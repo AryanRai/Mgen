@@ -110,31 +110,45 @@ class MazeGenerator:
     
     def make_floating(self):
         """Convert maze to floating rooms (disconnected sections)
-        Creates unsolvable maze by randomly blocking passages to create isolated rooms.
-        This tests frontier-based exploration and handling of disconnected spaces.
+        Creates TRULY unsolvable maze by wall-following by creating completely
+        disconnected rooms. The robot starts in one room but cannot reach other rooms.
         """
-        # Add back random walls to create disconnected sections
-        # Target: create 3-5 isolated regions
-        num_regions = random.randint(3, min(5, self.width * self.height // 4))
-        walls_to_add = num_regions * 2  # Add multiple walls per region
+        # Strategy: Divide the maze into separate regions and wall them off completely
         
-        for _ in range(walls_to_add):
-            x = random.randint(0, self.width - 1)
-            y = random.randint(0, self.height - 1)
-            direction = random.choice(['N', 'S', 'E', 'W'])
-            
-            # Add wall in this direction
-            self.grid[y][x][direction] = True
-            
-            # Add counterpart wall
-            if direction == 'N' and y > 0:
-                self.grid[y-1][x]['S'] = True
-            elif direction == 'S' and y < self.height - 1:
-                self.grid[y+1][x]['N'] = True
-            elif direction == 'E' and x < self.width - 1:
-                self.grid[y][x+1]['W'] = True
-            elif direction == 'W' and x > 0:
-                self.grid[y][x-1]['E'] = True
+        # For a proper floating room maze, create 2-3 completely isolated sections
+        # by adding complete wall barriers
+        
+        if self.width < 6 or self.height < 6:
+            # Too small for floating rooms, just add some random walls
+            for _ in range(5):
+                x = random.randint(0, self.width - 1)
+                y = random.randint(0, self.height - 1)
+                for direction in ['N', 'S', 'E', 'W']:
+                    self.grid[y][x][direction] = True
+            return
+        
+        # Create vertical barrier to split maze into left and right sections
+        barrier_x = self.width // 2
+        for y in range(self.height):
+            # Wall off the middle column completely
+            if barrier_x < self.width:
+                self.grid[y][barrier_x]['W'] = True
+                if barrier_x > 0:
+                    self.grid[y][barrier_x - 1]['E'] = True
+        
+        # Create horizontal barrier in one section to create a third isolated room
+        if self.height >= 8:
+            barrier_y = self.height // 2
+            # Only wall off the left half
+            for x in range(barrier_x):
+                self.grid[barrier_y][x]['N'] = True
+                if barrier_y > 0:
+                    self.grid[barrier_y - 1][x]['S'] = True
+        
+        # Result: 3 completely disconnected rooms
+        # - Top-left room (robot starts here if at 0,0)
+        # - Bottom-left room (unreachable)
+        # - Right room (unreachable)
     
     def add_finish_line(self):
         """Add finish line by opening one wall at the maze edge
