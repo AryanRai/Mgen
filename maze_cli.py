@@ -10,9 +10,10 @@ import os
 import argparse
 
 class MazeGenerator:
-    def __init__(self, width, height):
+    def __init__(self, width, height, complexity=1.0):
         self.width = width
         self.height = height
+        self.complexity = max(0.0, min(1.0, complexity))  # Clamp to 0-1
         self.grid = [[{'N': True, 'S': True, 'E': True, 'W': True} 
                       for _ in range(width)] for _ in range(height)]
         self.visited = [[False for _ in range(width)] for _ in range(height)]
@@ -76,10 +77,46 @@ class MazeGenerator:
                 self.grid[y1][x1]['W'] = False
                 self.grid[y2][x2]['E'] = False
     
-    def to_sdf(self, output_file, cell_size=2.0):
-        """Convert maze to Gazebo SDF format"""
-        wall_height = 0.5
-        wall_thickness = 0.1
+    def apply_density(self, density):
+        """Remove additional walls based on density parameter (0.0-1.0)
+        density=1.0: keep all walls (perfect maze)
+        density=0.5: remove ~50% of remaining walls (more open)
+        density=0.0: remove almost all walls (very open)
+        """
+        if density >= 1.0:
+            return  # Keep all walls
+        
+        # Calculate how many walls to remove
+        removal_rate = 1.0 - density
+        
+        # Iterate through all cells and randomly remove walls
+        for y in range(self.height):
+            for x in range(self.width):
+                # Try to remove each wall with probability based on removal_rate
+                for direction in ['N', 'S', 'E', 'W']:
+                    if self.grid[y][x][direction] and random.random() < removal_rate:
+                        # Remove this wall and its counterpart
+                        self.grid[y][x][direction] = False
+                        
+                        # Remove counterpart wall in adjacent cell
+                        if direction == 'N' and y > 0:
+                            self.grid[y-1][x]['S'] = False
+                        elif direction == 'S' and y < self.height - 1:
+                            self.grid[y+1][x]['N'] = False
+                        elif direction == 'E' and x < self.width - 1:
+                            self.grid[y][x+1]['W'] = False
+                        elif direction == 'W' and x > 0:
+                            self.grid[y][x-1]['E'] = False
+    
+    def to_sdf(self, output_file, cell_size=2.0, wall_height=0.5, wall_thickness=0.1):
+        """Convert maze to Gazebo SDF format with configurable parameters
+        
+        Args:
+            output_file: Path to output SDF file
+            cell_size: Distance between parallel walls in meters (corridor width)
+            wall_height: Height of walls in meters
+            wall_thickness: Thickness of walls in meters
+        """
         
         sdf_content = f'''<?xml version="1.0" ?>
 <sdf version="1.8">
@@ -212,7 +249,16 @@ Examples:
     parser.add_argument('size', type=int, help='Maze size (creates size x size maze)')
     parser.add_argument('-o', '--output', help='Output filename (default: maze_<size>x<size>.world)')
     parser.add_argument('--seed', type=int, help='Random seed for reproducible mazes')
-    parser.add_argument('--cell-size', type=float, default=2.0, help='Cell size in meters (default: 2.0)')
+    parser.add_argument('--cell-size', type=float, default=2.0, 
+                       help='Cell size in meters (default: 2.0) - distance between parallel walls')
+    parser.add_argument('--wall-height', type=float, default=0.5, 
+                       help='Wall height in meters (default: 0.5)')
+    parser.add_argument('--wall-thickness', type=float, default=0.1, 
+                       help='Wall thickness in meters (default: 0.1)')
+    parser.add_argument('--wall-density', type=float, default=1.0, 
+                       help='Wall density 0.0-1.0 (default: 1.0) - 1.0=all walls, 0.5=50%% walls removed')
+    parser.add_argument('--complexity', type=float, default=1.0, 
+                       help='Maze complexity 0.0-1.0 (default: 1.0) - affects branching')
     parser.add_argument('--dir', default='maze_generator/generated_mazes', 
                        help='Output directory (default: maze_generator/generated_mazes)')
     
@@ -232,14 +278,26 @@ Examples:
     if args.seed is not None:
         print(f"   Using seed: {args.seed}")
     
-    maze = MazeGenerator(args.size, args.size)
+    # Create maze with complexity parameter
+    maze = MazeGenerator(args.size, args.size, args.complexity)
     maze.generate(args.seed)
-    wall_count = maze.to_sdf(output_file, args.cell_size)
+    
+    # Apply density (remove extra walls if density < 1.0)
+    if args.wall_density < 1.0:
+        print(f"   Applying wall density: {args.wall_density:.1%}")
+        maze.apply_density(args.wall_density)
+    
+    # Convert to SDF with custom parameters
+    wall_count = maze.to_sdf(output_file, args.cell_size, args.wall_height, args.wall_thickness)
     
     print(f"✅ Maze generated successfully!")
     print(f"   Size: {args.size}x{args.size}")
     print(f"   Walls: {wall_count}")
-    print(f"   Cell size: {args.cell_size}m")
+    print(f"   Cell size (corridor width): {args.cell_size}m")
+    print(f"   Wall height: {args.wall_height}m")
+    print(f"   Wall thickness: {args.wall_thickness}m")
+    print(f"   Wall density: {args.wall_density:.1%}")
+    print(f"   Complexity: {args.complexity:.1%}")
     print(f"   Output: {output_file}")
     print(f"\n🚀 To test:")
     print(f"   gz sim -r -v2 {output_file} &")

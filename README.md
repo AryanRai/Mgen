@@ -23,6 +23,14 @@ cd maze_generator
 chmod +x maze_cli.py
 ```
 
+## Quick Start
+
+### Using the Launch Script (Recommended)
+```bash
+./launch_mgen.sh
+# Select from preset configurations or use advanced mode
+```
+
 ## Usage
 
 ### Basic Usage
@@ -39,6 +47,38 @@ This creates `maze_generator/generated_mazes/maze_8x8.world`
 ```bash
 python3 maze_cli.py 10 -o my_custom_maze.world
 ```
+
+### Advanced Configuration
+
+```bash
+# Generate with custom corridor width
+python3 maze_cli.py 8 --cell-size 2.5
+
+# Generate with all custom parameters
+python3 maze_cli.py 10 \
+  --cell-size 2.0 \
+  --wall-height 0.5 \
+  --wall-thickness 0.1 \
+  --wall-density 0.8 \
+  --complexity 1.0 \
+  --seed 100
+```
+
+## Configuration Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `size` | Required | Maze size (creates size×size maze) |
+| `--cell-size` | 2.0 | Corridor width in meters (distance between parallel walls) |
+| `--wall-height` | 0.5 | Wall height in meters |
+| `--wall-thickness` | 0.1 | Wall thickness in meters |
+| `--wall-density` | 1.0 | Wall density 0.0-1.0 (1.0=all walls, 0.5=50% removed) |
+| `--complexity` | 1.0 | Maze complexity 0.0-1.0 (affects branching) |
+| `--seed` | Random | Random seed for reproducibility |
+| `-o, --output` | Auto | Output filename |
+| `--dir` | generated_mazes | Output directory |
+
+**📖 See `CONFIGURATION.md` for detailed parameter documentation, examples, and presets.**
 
 ### Reproducible Mazes
 
