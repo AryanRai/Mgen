@@ -1,4 +1,4 @@
-# Gazebo Maze Generator
+# MGen: Gazebo Maze Generator
 
 A Python CLI tool for generating solvable mazes in Gazebo SDF format for robot navigation testing.
 
