@@ -174,6 +174,73 @@ python3 maze_cli.py 8                        # Random maze each time
 
 ---
 
+### 8. Floating Maze
+**Parameter:** `--floating`  
+**Type:** Flag (boolean)  
+**Default:** False  
+**Description:** Creates disconnected rooms (unsolvable by wall-following alone)
+
+**Examples:**
+```bash
+python3 maze_cli.py 10 --floating            # Floating maze
+python3 maze_cli.py 10 --floating --seed 42  # Reproducible floating maze
+```
+
+**Impact:**
+- Creates 3-5 isolated regions within the maze
+- Rooms are not connected by continuous paths
+- **Unsolvable by simple wall-following algorithms**
+- Requires frontier-based exploration or mapping
+
+**Use Cases:**
+- **Test advanced algorithms**: Requires exploration + mapping
+- **Test frontier detection**: Robot must find unexplored areas
+- **Test decision making**: When to give up on current area
+- **Realistic scenarios**: Simulates buildings with separate rooms
+
+**Navigation Requirements:**
+- Mapping system to track explored areas
+- Frontier detection to find boundaries
+- Path planning to navigate between frontiers
+- Decision logic for when area is fully explored
+
+**Warning:** Standard wall-following will get stuck in one room!
+
+---
+
+### 9. Finish Line
+**Parameter:** `--finish-line`  
+**Type:** Flag (boolean)  
+**Default:** False  
+**Description:** Adds an exit opening at the maze edge (goal marker)
+
+**Examples:**
+```bash
+python3 maze_cli.py 8 --finish-line          # Maze with exit
+python3 maze_cli.py 10 --finish-line --seed 100  # Reproducible with exit
+```
+
+**Impact:**
+- Opens one wall at the opposite corner from start (0,0)
+- Creates a clear "exit" point
+- Typically at position (width-1, height-1)
+- Removes east wall to create opening
+
+**Use Cases:**
+- **Goal detection**: Robot can detect when maze is "solved"
+- **Performance metrics**: Measure time to reach exit
+- **Completion testing**: Verify robot finds the goal
+- **Visual feedback**: Clear indication of maze completion
+
+**Detection:**
+- Robot can detect opening with LiDAR (no wall on one side)
+- Can be used as stopping condition
+- Useful for timed challenges
+
+**Note:** Works with both standard and floating mazes
+
+---
+
 ## Configuration Presets
 
 ### Preset 1: Narrow Challenge
@@ -226,6 +293,38 @@ python3 maze_cli.py 10 \
   --seed 500
 ```
 **Purpose:** Simulate realistic indoor environment
+
+### Preset 6: Floating Rooms Challenge
+```bash
+python3 maze_cli.py 10 \
+  --cell-size 2.0 \
+  --wall-density 0.8 \
+  --floating \
+  --seed 600
+```
+**Purpose:** Test frontier-based exploration (unsolvable by wall-following)
+
+### Preset 7: Timed Challenge with Exit
+```bash
+python3 maze_cli.py 8 \
+  --cell-size 2.0 \
+  --wall-density 1.0 \
+  --finish-line \
+  --seed 700
+```
+**Purpose:** Timed maze solving with clear goal
+
+### Preset 8: Complex Floating with Exit
+```bash
+python3 maze_cli.py 12 \
+  --cell-size 2.5 \
+  --wall-density 0.7 \
+  --complexity 1.0 \
+  --floating \
+  --finish-line \
+  --seed 800
+```
+**Purpose:** Ultimate challenge - disconnected rooms with goal detection
 
 ---
 

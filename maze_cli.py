@@ -108,6 +108,53 @@ class MazeGenerator:
                         elif direction == 'W' and x > 0:
                             self.grid[y][x-1]['E'] = False
     
+    def make_floating(self):
+        """Convert maze to floating rooms (disconnected sections)
+        Creates unsolvable maze by randomly blocking passages to create isolated rooms.
+        This tests frontier-based exploration and handling of disconnected spaces.
+        """
+        # Add back random walls to create disconnected sections
+        # Target: create 3-5 isolated regions
+        num_regions = random.randint(3, min(5, self.width * self.height // 4))
+        walls_to_add = num_regions * 2  # Add multiple walls per region
+        
+        for _ in range(walls_to_add):
+            x = random.randint(0, self.width - 1)
+            y = random.randint(0, self.height - 1)
+            direction = random.choice(['N', 'S', 'E', 'W'])
+            
+            # Add wall in this direction
+            self.grid[y][x][direction] = True
+            
+            # Add counterpart wall
+            if direction == 'N' and y > 0:
+                self.grid[y-1][x]['S'] = True
+            elif direction == 'S' and y < self.height - 1:
+                self.grid[y+1][x]['N'] = True
+            elif direction == 'E' and x < self.width - 1:
+                self.grid[y][x+1]['W'] = True
+            elif direction == 'W' and x > 0:
+                self.grid[y][x-1]['E'] = True
+    
+    def add_finish_line(self):
+        """Add finish line by opening one wall at the maze edge
+        Creates an exit point by removing a wall segment on the outer boundary.
+        Typically placed at the opposite corner from start (0,0).
+        """
+        # Choose finish location (opposite corner from start)
+        finish_x = self.width - 1
+        finish_y = self.height - 1
+        
+        # Open the south wall of the finish cell (creates exit)
+        self.grid[finish_y][finish_x]['S'] = True  # Keep wall for structure
+        self.grid[finish_y][finish_x]['E'] = False  # Open east wall
+        
+        # Also open adjacent cell if exists
+        if finish_x < self.width - 1:
+            self.grid[finish_y][finish_x + 1]['W'] = False
+        
+        return (finish_x, finish_y)
+    
     def to_sdf(self, output_file, cell_size=2.0, wall_height=0.5, wall_thickness=0.1):
         """Convert maze to Gazebo SDF format with configurable parameters
         
@@ -259,6 +306,10 @@ Examples:
                        help='Wall density 0.0-1.0 (default: 1.0) - 1.0=all walls, 0.5=50%% walls removed')
     parser.add_argument('--complexity', type=float, default=1.0, 
                        help='Maze complexity 0.0-1.0 (default: 1.0) - affects branching')
+    parser.add_argument('--floating', action='store_true',
+                       help='Generate floating maze (disconnected rooms, unsolvable by wall-following)')
+    parser.add_argument('--finish-line', action='store_true',
+                       help='Add finish line by opening one wall at maze edge (creates exit)')
     parser.add_argument('--dir', default='maze_generator/generated_mazes', 
                        help='Output directory (default: maze_generator/generated_mazes)')
     
@@ -274,7 +325,8 @@ Examples:
         output_file = os.path.join(args.dir, f'maze_{args.size}x{args.size}.world')
     
     # Generate maze
-    print(f"🔨 Generating {args.size}x{args.size} maze...")
+    maze_type = "floating" if args.floating else "standard"
+    print(f"🔨 Generating {args.size}x{args.size} {maze_type} maze...")
     if args.seed is not None:
         print(f"   Using seed: {args.seed}")
     
@@ -287,10 +339,22 @@ Examples:
         print(f"   Applying wall density: {args.wall_density:.1%}")
         maze.apply_density(args.wall_density)
     
+    # Make floating (disconnected rooms) if requested
+    if args.floating:
+        print(f"   Creating floating rooms (disconnected sections)...")
+        maze.make_floating()
+    
+    # Add finish line if requested
+    finish_pos = None
+    if args.finish_line:
+        print(f"   Adding finish line (exit opening)...")
+        finish_pos = maze.add_finish_line()
+    
     # Convert to SDF with custom parameters
     wall_count = maze.to_sdf(output_file, args.cell_size, args.wall_height, args.wall_thickness)
     
     print(f"✅ Maze generated successfully!")
+    print(f"   Type: {maze_type.upper()}")
     print(f"   Size: {args.size}x{args.size}")
     print(f"   Walls: {wall_count}")
     print(f"   Cell size (corridor width): {args.cell_size}m")
@@ -298,6 +362,10 @@ Examples:
     print(f"   Wall thickness: {args.wall_thickness}m")
     print(f"   Wall density: {args.wall_density:.1%}")
     print(f"   Complexity: {args.complexity:.1%}")
+    if args.floating:
+        print(f"   ⚠️  Floating maze: Contains disconnected rooms (unsolvable by wall-following)")
+    if args.finish_line:
+        print(f"   🏁 Finish line: Exit at position ({finish_pos[0]}, {finish_pos[1]})")
     print(f"   Output: {output_file}")
     print(f"\n🚀 To test:")
     print(f"   gz sim -r -v2 {output_file} &")

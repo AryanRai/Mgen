@@ -74,9 +74,38 @@ python3 maze_cli.py 10 \
 | `--wall-thickness` | 0.1 | Wall thickness in meters |
 | `--wall-density` | 1.0 | Wall density 0.0-1.0 (1.0=all walls, 0.5=50% removed) |
 | `--complexity` | 1.0 | Maze complexity 0.0-1.0 (affects branching) |
+| `--floating` | False | Create floating maze (disconnected rooms, unsolvable) |
+| `--finish-line` | False | Add finish line (exit opening at maze edge) |
 | `--seed` | Random | Random seed for reproducibility |
 | `-o, --output` | Auto | Output filename |
 | `--dir` | generated_mazes | Output directory |
+
+### Special Maze Types
+
+#### Floating Maze (Disconnected Rooms)
+```bash
+python3 maze_cli.py 10 --floating --seed 42
+```
+- Creates isolated rooms that are not connected
+- **Unsolvable by wall-following alone**
+- Requires frontier-based exploration or mapping
+- Tests advanced navigation algorithms
+
+#### Maze with Finish Line
+```bash
+python3 maze_cli.py 8 --finish-line --seed 100
+```
+- Adds an exit opening at the maze edge
+- Creates a clear goal/completion point
+- Useful for timed challenges and performance metrics
+- Robot can detect the opening with LiDAR
+
+#### Combined (Ultimate Challenge)
+```bash
+python3 maze_cli.py 12 --floating --finish-line --seed 200
+```
+- Disconnected rooms + goal detection
+- Requires advanced algorithms to solve
 
 **📖 See `CONFIGURATION.md` for detailed parameter documentation, examples, and presets.**
 
